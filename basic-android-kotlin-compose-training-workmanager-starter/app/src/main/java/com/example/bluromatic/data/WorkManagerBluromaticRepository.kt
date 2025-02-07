@@ -43,7 +43,7 @@ class WorkManagerBluromaticRepository(context: Context) : BluromaticRepository {
     // New code
     private val workManager = WorkManager.getInstance(context)
 
-    override val outputWorkInfo: Flow<WorkInfo?> =
+    override val outputWorkInfo: Flow<WorkInfo> =
         workManager.getWorkInfosByTagLiveData(TAG_OUTPUT).asFlow().mapNotNull {
             if (it.isNotEmpty()) it.first() else null
         }
