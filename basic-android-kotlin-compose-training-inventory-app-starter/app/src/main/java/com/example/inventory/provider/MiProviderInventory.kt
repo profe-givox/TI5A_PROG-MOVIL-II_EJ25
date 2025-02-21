@@ -5,8 +5,15 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.UriMatcher
 import android.database.Cursor
+import android.database.MatrixCursor
 import android.net.Uri
 import com.example.inventory.InventoryApplication
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 
 private val sUriMatcher = UriMatcher(UriMatcher.NO_MATCH).apply {
     /*
@@ -42,17 +49,42 @@ class MiProviderInventory (val ctx: Context) : ContentProvider() {
         p3: Array<out String>?,
         p4: String?
     ): Cursor? {
+
+        val cursor = MatrixCursor(arrayOf("id","name","price","quantity"))
+        val coroutineScope =CoroutineScope(Dispatchers.IO)
+
           when( sUriMatcher.match(p0)){
-              1 ->  (ctx as InventoryApplication).container.itemsRepository.getAllItemsStream()
+              1 -> {
+                  val inventario =
+                      (ctx as InventoryApplication).container.itemsRepository.getAllItemsStream()
+                  val job = coroutineScope.launch {
+                      withContext(Dispatchers.IO) {
+                          inventario.collect {
+                              it.forEach { item ->
+                                  cursor.addRow(
+                                      arrayOf(item.id, item.name, item.price, item.quantity)
+                                  )
+                              }
+
+                          }
+                      }
+                  }
+                  runBlocking { job.join() }
+
+              }
               2 -> Unit
               3 -> Unit
           }
 
-        return null
+        return cursor
     }
 
     override fun getType(p0: Uri): String? {
-        TODO("Not yet implemented")
+        return when(sUriMatcher.match(p0)){
+            1 -> "vnd.android.cursor.dir/vnd.com.example.inventory.provider.inventory"
+            2 -> "vnd.android.cursor.item/vnd.com.example.inventory.provider.inventory"
+            else -> ""
+        }
     }
 
     override fun insert(p0: Uri, p1: ContentValues?): Uri? {
