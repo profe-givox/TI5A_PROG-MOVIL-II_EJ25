@@ -7,10 +7,13 @@ import android.content.UriMatcher
 import android.database.Cursor
 import android.database.MatrixCursor
 import android.net.Uri
+import android.util.Log
 import com.example.inventory.InventoryApplication
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -34,55 +37,59 @@ private val sUriMatcher = UriMatcher(UriMatcher.NO_MATCH).apply {
      */
     addURI("com.example.inventory.provider", "inventory/#", 2)
 
-    addURI("com.example.inventory.provider", "inventory/*", 2)
+    addURI("com.example.inventory.provider", "inventory/*", 3)
 }
 
-class MiProviderInventory (val ctx: Context) : ContentProvider() {
+class MiProviderInventory  : ContentProvider() {
+
     override fun onCreate(): Boolean {
-        TODO("Not yet implemented")
+        return true
     }
 
+    // Define un CoroutineScope para manejar las coroutines
+    private val scope = CoroutineScope(Dispatchers.IO)
+
     override fun query(
-        p0: Uri,
-        p1: Array<out String>?,
-        p2: String?,
-        p3: Array<out String>?,
-        p4: String?
+        uri: Uri,
+        projection: Array<out String>?,
+        selection: String?,
+        selectionArgs: Array<out String>?,
+        sortOrder: String?
     ): Cursor? {
+        val cursor = MatrixCursor(arrayOf("id", "name", "price", "quantity"))
+        val deferredResult = CompletableDeferred<Cursor?>()
+        when(sUriMatcher.match(uri)) {
+            // Lanza una coroutine para recolectar los datos del Flow
+            1 ->  scope.launch {
+                try {
+                    Log.d("xxx123", "EN el content")
+                    val inventario =
+                        (context as InventoryApplication).container.itemsRepository.getAllItemsStream()
 
-        val cursor = MatrixCursor(arrayOf("id","name","price","quantity"))
-        val coroutineScope =CoroutineScope(Dispatchers.IO)
-
-          when( sUriMatcher.match(p0)){
-              1 -> {
-                  val inventario =
-                      (ctx as InventoryApplication).container.itemsRepository.getAllItemsStream()
-                  val job = coroutineScope.launch {
-                      withContext(Dispatchers.IO) {
-                          inventario.collect {
-                              it.forEach { item ->
-                                  cursor.addRow(
-                                      arrayOf(item.id, item.name, item.price, item.quantity)
-                                  )
-                              }
-
-                          }
-                      }
-                  }
-                  runBlocking { job.join() }
-
-              }
-              2 -> Unit
-              3 -> Unit
-          }
-
-        return cursor
+                    val itemList = inventario.first()
+                    itemList.forEach { item ->
+                        Log.d("xxx123", item.toString())
+                        cursor.addRow(arrayOf(item.id, item.name, item.price, item.quantity))
+                    }
+                    Log.d("xxx123", cursor.toString())
+                    deferredResult.complete(cursor)
+                } catch (e: Exception) {
+                    Log.e("xxx123", "Error collecting inventory items", e)
+                    deferredResult.completeExceptionally(e)
+                }
+            }
+        }
+        // Espera el resultado de la coroutine
+        return runBlocking {
+            deferredResult.await()
+        }
     }
 
     override fun getType(p0: Uri): String? {
         return when(sUriMatcher.match(p0)){
             1 -> "vnd.android.cursor.dir/vnd.com.example.inventory.provider.inventory"
             2 -> "vnd.android.cursor.item/vnd.com.example.inventory.provider.inventory"
+            3 -> "vnd.android.cursor.dir/vnd.com.example.inventory.provider.inventory"
             else -> ""
         }
     }
