@@ -57,6 +57,7 @@ class MiProviderInventory  : ContentProvider() {
         sortOrder: String?
     ): Cursor? {
         val cursor = MatrixCursor(arrayOf("id", "name", "price", "quantity"))
+        //val cursor = MatrixCursor(projection)
         val deferredResult = CompletableDeferred<Cursor?>()
         when(sUriMatcher.match(uri)) {
             // Lanza una coroutine para recolectar los datos del Flow

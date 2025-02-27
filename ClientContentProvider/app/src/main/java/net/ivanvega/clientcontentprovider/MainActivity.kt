@@ -29,10 +29,11 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+
         val c = contentResolver.query(
             Uri.parse(
             "content://com.example.inventory.provider/inventory"
-        ), null, null,null,null)
+        ), arrayOf("id", "name", "price", "quantity"), null,null,null)
 
         if (c != null) {
             while (c.moveToNext()){
