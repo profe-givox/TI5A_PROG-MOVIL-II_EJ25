@@ -32,9 +32,9 @@ class MainActivity : ComponentActivity() {
                 ) {
                     //Greeting("Android")
                     //LocationPermissionScreen()
-                    CurrentLocationScreen()
+                    //CurrentLocationScreen()
                     //LocationUpdatesScreen()
-                    //MiMapa() //Google
+                    MiMapa() //Google
                     //MiMapaOSMDroidCompose() //Open Street Map
                 }
             }
